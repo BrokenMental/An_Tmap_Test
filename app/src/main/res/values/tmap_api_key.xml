@@ -1,0 +1,4 @@
+<resources>
+    <!--TODO: Before you run your application, you need a TMap API key.-->
+    <string name="tmap_api_key" templateMergeStrategy="preserve" translatable="false">18e673c0-d7fd-4cae-8ef4-161e431a433b</string>
+</resources>
