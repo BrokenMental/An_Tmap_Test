@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -23,7 +24,6 @@ import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.skt.Tmap.TMapData;
-import com.skt.Tmap.TMapGpsManager;
 import com.skt.Tmap.TMapMarkerItem;
 import com.skt.Tmap.TMapPoint;
 import com.skt.Tmap.TMapPolyLine;
@@ -36,15 +36,10 @@ public class MainActivity extends AppCompatActivity{
     TMapPoint tMapPointStart = new TMapPoint(37.570841, 126.985302); // SKT타워(출발지)
     TMapPoint tMapPointEnd = new TMapPoint(37.551135, 126.988205); // N서울타워(목적지)
 
-    //Permission Values
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
-    private boolean mPermissionDenied = false;
-
     private TMapView tMapView ;
     private TMapData tMapData;
     private Bitmap bitmap;
     private TMapMarkerItem markerItem;
-    private TMapGpsManager tmapgps;
     private PlaceAutocompleteFragment placeAutoComplete;
     private ImageView gpsi;
     private PermissionCall PC;
@@ -63,16 +58,28 @@ public class MainActivity extends AppCompatActivity{
         tMapData = new TMapData();
         markerItem = new TMapMarkerItem();
 
+        // 취소버튼 관련 변수
         m_bTrackingMode = true;
+
+        // Permission 확인
         PC = new PermissionCall(this);
 
-        //GPS 아이콘
+        // GPS 아이콘 생성
         gpsi = findViewById(R.id.gps_icon);
 
-        //GPS 아이콘 클릭
+        // GPS 아이콘 클릭 시 이벤트
         gpsi.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // 권한 확인
+                if(ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION)!= PackageManager.PERMISSION_GRANTED
+                        && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        requestPermissions(new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 1); //위치권한 탐색 허용 관련 내용
+                    }
+                    return;
+                }
                 setGps(); // 현재위치 찾기
                 Toast.makeText(getApplicationContext(), "현재위치를 찾는 중입니다. GPS를 켜주세요.", Toast.LENGTH_SHORT).show();
             }
@@ -81,8 +88,11 @@ public class MainActivity extends AppCompatActivity{
         // 마커 아이콘
         bitmap = BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.pin_icon);
 
+        // 지도 생성
         tMapView.setSKTMapApiKey(getString(R.string.tmap_api_key));
         linearLayoutTmap.addView(tMapView);
+
+        // 경로 검색 이벤트
         findPath();
 
         //Google 검색
@@ -99,7 +109,7 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
-        // 클릭 이벤트 설정
+        // 원 클릭 이벤트 설정
         /*tMapView.setOnClickListenerCallBack(new TMapView.OnClickListenerCallback() {
             @Override
             public boolean onPressEvent(ArrayList arrayList, ArrayList arrayList1, TMapPoint tMapPoint, PointF pointF) {
@@ -142,7 +152,7 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
-        // 지도 스크롤 종료
+        // 지도 드래그 종료
         /*tMapView.setOnDisableScrollWithZoomLevelListener(new TMapView.OnDisableScrollWithZoomLevelCallback() {
             @Override
             public void onDisableScrollWithZoomLevelEvent(float zoom, TMapPoint centerPoint) {
@@ -152,6 +162,7 @@ public class MainActivity extends AppCompatActivity{
 
     }
 
+    // 이전버튼 이벤트
     @Override
     public void onBackPressed() {
         long tempTime = System.currentTimeMillis();
@@ -161,10 +172,11 @@ public class MainActivity extends AppCompatActivity{
             super.onBackPressed();
         } else {
             backPressedTime = tempTime;
-            Toast.makeText(this, "뒤로 버튼을 한번 더 누르시면 종료됩니다.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "이전 버튼을 한번 더 누르시면 종료됩니다.", Toast.LENGTH_SHORT).show();
         }
     }
 
+    // 현재위치 관련 메서드
     private final LocationListener mLocationListener = new LocationListener() {
         public void onLocationChanged(Location location) {
 
@@ -193,6 +205,7 @@ public class MainActivity extends AppCompatActivity{
         }
     };
 
+    // GPS 얻어오기 메서드
     public void setGps() {
         final LocationManager lm = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED) {
@@ -204,6 +217,7 @@ public class MainActivity extends AppCompatActivity{
                 mLocationListener);
     }
 
+    // 경로찾기 메서드
     public void findPath() {
         try {
             tMapData.findPathData(tMapPointStart, tMapPointEnd, new TMapData.FindPathDataListenerCallback() {
@@ -219,5 +233,4 @@ public class MainActivity extends AppCompatActivity{
             e.printStackTrace();
         }
     }
-
 }
