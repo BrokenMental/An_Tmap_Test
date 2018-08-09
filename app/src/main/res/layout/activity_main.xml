@@ -28,7 +28,7 @@
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
             android:layout_marginTop="64dp"
-            android:layout_marginLeft="370dp"
+            android:layout_gravity="right"
             android:background="@android:color/transparent"
             app:srcCompat="@drawable/gps_icon" />
 
