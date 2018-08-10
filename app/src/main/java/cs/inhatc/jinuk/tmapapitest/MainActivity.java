@@ -29,14 +29,21 @@ import com.skt.Tmap.TMapPoint;
 import com.skt.Tmap.TMapPolyLine;
 import com.skt.Tmap.TMapView;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity{
+public class MainActivity extends AppCompatActivity {
 
-    TMapPoint tMapPointStart = new TMapPoint(37.570841, 126.985302); // SKT타워(출발지)
-    TMapPoint tMapPointEnd = new TMapPoint(37.551135, 126.988205); // N서울타워(목적지)
+    TMapPoint tMapPoint1 = new TMapPoint(37.4588197, 126.63411719999999); // 인하대병원
+    TMapPoint tMapPoint2 = new TMapPoint(37.4500221, 126.65348799999992); // 인하대
+    TMapPoint tMapPoint3 = new TMapPoint(37.4480158, 126.65750409999998); // 인하공전
+    TMapPoint tMapPoint4 = new TMapPoint(37.441546, 126.70149600000002); // 인천시외버스터미널
+    TMapPoint tMapPoint5 = new TMapPoint(37.4565562, 126.68458069999997); // 주안역
 
-    private TMapView tMapView ;
+    private TMapView tMapView;
     private TMapData tMapData;
     private Bitmap bitmap;
     private TMapMarkerItem markerItem;
@@ -44,6 +51,7 @@ public class MainActivity extends AppCompatActivity{
     private ImageView gpsi;
     private PermissionCall PC;
     private boolean m_bTrackingMode;
+    private ArrayList passList;
 
     //뒤로가기 버튼 Delay
     private final long FINISH_INTERVAL_TIME = 2000;
@@ -54,8 +62,13 @@ public class MainActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         LinearLayout linearLayoutTmap = findViewById(R.id.linearLayoutTmap);
+
+        // TMap 지도 생성 관련 변수
         tMapView = new TMapView(this);
+        // TMap에서 사용되는 데이터 관련 변수
         tMapData = new TMapData();
+
+        // 마커 관련 변수
         markerItem = new TMapMarkerItem();
 
         // 취소버튼 관련 변수
@@ -63,6 +76,12 @@ public class MainActivity extends AppCompatActivity{
 
         // Permission 확인
         PC = new PermissionCall(this);
+
+        // 경유지 추가를 위한 ArrayList
+        passList = new ArrayList<>();
+        passList.add(tMapPoint2);
+        passList.add(tMapPoint3);
+        passList.add(tMapPoint4);
 
         // GPS 아이콘 생성
         gpsi = findViewById(R.id.gps_icon);
@@ -72,11 +91,11 @@ public class MainActivity extends AppCompatActivity{
             @Override
             public void onClick(View v) {
                 // 권한 확인
-                if(ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION)!= PackageManager.PERMISSION_GRANTED
-                        && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+                if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                        && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        requestPermissions(new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 1); //위치권한 탐색 허용 관련 내용
+                        requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1); //위치권한 탐색 허용 관련 내용
                     }
                     return;
                 }
@@ -92,15 +111,19 @@ public class MainActivity extends AppCompatActivity{
         tMapView.setSKTMapApiKey(getString(R.string.tmap_api_key));
         linearLayoutTmap.addView(tMapView);
 
+        tMapView.setCenterPoint(126.63411719999999,37.4588197);
+
         // 경로 검색 이벤트
-        findPath();
+        //findPathCarOne();
+        //findPathType(); // 출발지, 도착지의 마커가 표시된다.
+        findPathDataWithType();
 
         //Google 검색
         placeAutoComplete = (PlaceAutocompleteFragment) getFragmentManager().findFragmentById(R.id.place_autocomplete);
         placeAutoComplete.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
             public void onPlaceSelected(Place place) {
-                Log.d("Maps", "장소 이름: " + place.getName() + "/ 주소 : "+ place.getAddress().toString() + "/ 위&경도 : "+ place.getLatLng());
+                Log.d("Maps", "장소 이름: " + place.getName() + "/ 주소 : " + place.getAddress().toString() + "/ 위&경도 : " + place.getLatLng());
             }
 
             @Override
@@ -109,7 +132,7 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
-        // 원 클릭 이벤트 설정
+        // 숏 클릭 이벤트 설정
         /*tMapView.setOnClickListenerCallBack(new TMapView.OnClickListenerCallback() {
             @Override
             public boolean onPressEvent(ArrayList arrayList, ArrayList arrayList1, TMapPoint tMapPoint, PointF pointF) {
@@ -132,7 +155,7 @@ public class MainActivity extends AppCompatActivity{
 
                 markerItem.setIcon(bitmap); // 마커 아이콘 지정
                 markerItem.setPosition(0.5f, 1.0f); // 마커의 중심점을 중앙, 하단으로 설정
-                markerItem.setTMapPoint( tMapPoint ); // 마커의 좌표 지정
+                markerItem.setTMapPoint(tMapPoint); // 마커의 좌표 지정
                 //markerItem.setName("SKT타워"); // 마커의 타이틀 지정
                 tMapView.addMarkerItem("markerItem", markerItem); // 지도에 마커 추가
 
@@ -183,10 +206,14 @@ public class MainActivity extends AppCompatActivity{
             if (location != null) {
                 double latitude = location.getLatitude();
                 double longitude = location.getLongitude();
+
+                /* 해당 위치에 포인트 찍기 */
                 tMapView.setLocationPoint(longitude, latitude);
+
+                /* 해당 위치의 중앙으로 화면 이동 */
                 tMapView.setCenterPoint(longitude, latitude);
 
-                /* 현재 보는 방향 */
+                /* 현재 보는 방향표시 */
                 tMapView.setCompassMode(true);
 
                 /* 현위치 아이콘표시 */
@@ -217,10 +244,35 @@ public class MainActivity extends AppCompatActivity{
                 mLocationListener);
     }
 
-    // 경로찾기 메서드
-    public void findPath() {
+    // Type별 경로 거리
+    public void findPathAllType() {
+        tMapData.findPathDataAllType(TMapData.TMapPathType.CAR_PATH, tMapPoint1, tMapPoint5, new TMapData.FindPathDataAllListenerCallback() {
+            @Override
+            public void onFindPathDataAll(Document document) {
+                Element root = document.getDocumentElement();
+                NodeList nodeListPlacemark = root.getElementsByTagName("Document");
+                for (int i = 0; i < nodeListPlacemark.getLength(); i++) {
+                    NodeList nodeListPlacemarkItem = nodeListPlacemark.item(i).getChildNodes();
+                    for (int j = 0; j < nodeListPlacemarkItem.getLength(); j++) {
+                        if (nodeListPlacemarkItem.item(j).getNodeName().equals("tmap:totalDistance")) {
+                            Log.d("Distance", nodeListPlacemarkItem.item(j).getTextContent().trim()+"M"); // 총 거리 표시(M)
+                        }else if (nodeListPlacemarkItem.item(j).getNodeName().equals("tmap:totalTime")) {
+                            int TM = Integer.parseInt(nodeListPlacemarkItem.item(j).getTextContent().trim())/60;
+                            int TS = Integer.parseInt(nodeListPlacemarkItem.item(j).getTextContent().trim())%60;
+                            Log.d("Time", TM+" min"+TS+" sec"); // 총 시간 표시(초)
+                        }else if (nodeListPlacemarkItem.item(j).getNodeName().equals("tmap:totalFare")) {
+                            Log.d("Money", nodeListPlacemarkItem.item(j).getTextContent().trim()+" Won"); // 총 요금 표시
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 단일 자동차 경로찾기
+    public void findPathCarOne() {
         try {
-            tMapData.findPathData(tMapPointStart, tMapPointEnd, new TMapData.FindPathDataListenerCallback() {
+            tMapData.findPathData(tMapPoint1, tMapPoint5, new TMapData.FindPathDataListenerCallback() {
                 @Override
                 public void onFindPathData(TMapPolyLine tMapPolyLine) {
                     tMapPolyLine.setLineColor(Color.BLUE);
@@ -228,9 +280,62 @@ public class MainActivity extends AppCompatActivity{
                     tMapView.addTMapPolyLine("Line", tMapPolyLine);
                 }
             });
-
-        }catch(Exception e) {
+            findPathAllType();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+    // Type별 경로찾기
+    /*
+    TMapPathType.CAR_PATH - 자동차 경로 Type
+    TMapPathType.PEDESTRIAN_PATH - 보행자 경로 Type
+    */
+    public void findPathType() {
+        tMapData.findPathDataWithType(TMapData.TMapPathType.CAR_PATH, tMapPoint1, tMapPoint5, new TMapData.FindPathDataListenerCallback() {
+            @Override
+            public void onFindPathData(TMapPolyLine polyLine) {
+                polyLine.setLineColor(Color.BLUE);
+                polyLine.setLineWidth(10);
+                tMapView.addTMapPath(polyLine);
+            }
+        });
+        findPathAllType();
+    }
+
+    // 경유지를 추가하는 Type별 경로찾기
+    /*
+    passList - 경유지에 대한 좌표
+
+    searchOption - 경로 탐색 옵션(번호)
+    0: 교통최적+추천(기본값)
+	1: 교통최적+무료우선
+	2: 교통최적+최소시간
+	3: 교통최적+초보
+	4: 교통최적+고속도로우선
+	10: 최단
+	12: 교통최적 + 일반도로우선
+    */
+    public void findPathDataWithType() {
+        tMapData.findPathDataWithType(TMapData.TMapPathType.CAR_PATH, tMapPoint1, tMapPoint5, passList, 0,
+        new TMapData.FindPathDataListenerCallback() {
+            @Override
+            public void onFindPathData(TMapPolyLine polyLine) {
+                polyLine.setLineColor(Color.GREEN);
+                polyLine.setLineWidth(10);
+                tMapView.addTMapPath(polyLine);
+            }
+        });
+    }
+
+    // 이거 뭐지...
+    /*public void findPathCarAll() {
+        tMapData.findPathDataAll(tMapPointStart, tMapPointEnd, new TMapData.FindPathDataAllListenerCallback() {
+            @Override
+            public void onFindPathDataAll(Document doc) {
+
+            }
+        });
+    }*/
 }
+
